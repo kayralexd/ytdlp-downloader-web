@@ -903,6 +903,7 @@
   });
 
   // ── Video Bilgisi Getir ──────────────────────────────────────
+  // ── Video Bilgisi Getir (GÜNCELLENMİŞ) ─────────────────────────
   async function fetchInfo() {
     const url = document.getElementById('urlInput').value.trim();
     if (!url) {
@@ -910,7 +911,6 @@
       return;
     }
 
-    // Arayüzü sıfırla
     hideError();
     document.getElementById('videoCard').classList.add('hidden');
     document.getElementById('skeletonCard').classList.remove('hidden');
@@ -932,19 +932,21 @@
         throw new Error(data.error || 'Bilinmeyen bir hata oluştu.');
       }
 
+      // Backend'den gelen verileri eşleştiriyoruz
       currentTitle = data.title;
-      currentFormats = data.formats;
+      currentFormats = data.formats; // server.js'deki buildFormatList'ten gelen dizi
 
-      // Video bilgilerini doldur
       document.getElementById('videoTitle').textContent = data.title;
       document.getElementById('uploaderName').textContent = data.uploader;
       document.getElementById('platformName').textContent = data.platform;
 
+      // Süre ayarı
       const dur = formatDuration(data.duration);
       const badge = document.getElementById('durationBadge');
       if (dur) { badge.textContent = dur; badge.style.display = 'block'; }
       else { badge.style.display = 'none'; }
 
+      // İzlenme sayısı (Backend viewCount gönderiyor)
       const views = formatViews(data.viewCount);
       if (views) {
         document.getElementById('viewCount').textContent = views;
@@ -958,11 +960,8 @@
       if (data.thumbnail) {
         img.src = data.thumbnail;
         img.style.display = 'block';
-      } else {
-        img.style.display = 'none';
       }
 
-      // Format listesini oluştur
       renderFormats(data.formats);
 
       document.getElementById('skeletonCard').classList.add('hidden');
@@ -970,11 +969,12 @@
 
     } catch (err) {
       document.getElementById('skeletonCard').classList.add('hidden');
-      showError(err.message || 'Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
+      showError(err.message);
     } finally {
       document.getElementById('fetchBtn').disabled = false;
     }
   }
+
 
   // ── Format Kartlarını Render Et ──────────────────────────────
   function renderFormats(formats) {
