@@ -21,7 +21,7 @@ WORKDIR /app
 
 # Önce bağımlılıkları kopyala (Docker cache katmanı optimizasyonu)
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 # Uygulama dosyalarını kopyala
 COPY . .
