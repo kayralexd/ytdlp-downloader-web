@@ -4,7 +4,10 @@ const path = require('path');
 const cors = require('cors');
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Render genellikle 10000 kullanır
+const PORT = process.env.PORT || 10000; 
+
+// Çerez dosyasının yolu
+const COOKIES_PATH = path.join(__dirname, 'cookies.txt');
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
 app.use(cors());
@@ -24,7 +27,6 @@ function isValidUrl(url) {
 
 /**
  * yt-dlp'yi JSON modunda çalıştırıp video bilgisi alır
- * Render için User-Agent ve IP engeli önlemleri eklendi
  */
 function fetchVideoInfo(url) {
   return new Promise((resolve, reject) => {
@@ -32,7 +34,9 @@ function fetchVideoInfo(url) {
       '--dump-json',
       '--no-playlist',
       '--no-warnings',
-      '--no-check-certificates', // Sertifika hatalarını görmezden gel
+      '--no-check-certificates',
+      '--cookies', COOKIES_PATH, // Çerezleri ekledik
+      '--impersonate-client', 'chrome', // Tarayıcı gibi davran
       '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
       '--socket-timeout', '30',
       url
@@ -47,13 +51,16 @@ function fetchVideoInfo(url) {
 
     proc.on('close', (code) => {
       if (code !== 0) {
-        console.error("yt-dlp hatası detayı:", stderr); // Render loglarında hatayı gör
+        console.error("yt-dlp hatası detayı:", stderr); 
         let errorMsg = 'Video bilgisi alınamadı.';
-        if (stderr.includes('403') || stderr.includes('Sign in')) {
-          errorMsg = 'Bu video platform tarafından engelleniyor (Giriş veya IP kısıtlaması).';
-        } else if (stderr.includes('Unsupported URL')) {
-          errorMsg = 'Bu URL desteklenmiyor.';
+        
+        // Loglardaki hataya göre kullanıcıya bilgi ver
+        if (stderr.includes('Sign in') || stderr.includes('confirm you’re not a bot')) {
+          errorMsg = 'YouTube bot engeline takıldı. Çerezlerin (cookies.txt) güncellenmesi gerekebilir.';
+        } else if (stderr.includes('403')) {
+          errorMsg = 'Erişim engellendi (403 Forbidden).';
         }
+        
         return reject(new Error(errorMsg));
       }
 
@@ -117,11 +124,10 @@ app.post('/info', async (req, res) => {
     const info = await fetchVideoInfo(url.trim());
     const formats = buildFormatList(info);
 
-    // Frontend'e giden veriyi temizle
     res.json({
       title: info.title || 'Başlıksız',
       thumbnail: info.thumbnail || null,
-      duration: info.duration || 0,
+      duration: info.duration_string || '0:00',
       uploader: info.uploader || 'Bilinmiyor',
       viewCount: info.view_count || 0,
       formats
@@ -137,7 +143,17 @@ app.get('/download', (req, res) => {
 
   const safeFilename = encodeURIComponent(filename || 'video');
   
-  let ytdlpArgs = ['--no-playlist', '--no-warnings', '--no-check-certificates', '-o', '-', url];
+  // İndirme kısmına da çerezleri ve impersonate ekliyoruz
+  let ytdlpArgs = [
+    '--no-playlist', 
+    '--no-warnings', 
+    '--no-check-certificates', 
+    '--cookies', COOKIES_PATH,
+    '--impersonate-client', 'chrome',
+    '-o', '-', 
+    url
+  ];
+  
   let contentType = 'video/mp4';
 
   if (format === 'mp3') {
@@ -155,6 +171,11 @@ app.get('/download', (req, res) => {
 
   const proc = spawn('yt-dlp', ytdlpArgs);
   proc.stdout.pipe(res);
+
+  // Hata ayıklama için stderr'i konsola bas
+  proc.stderr.on('data', (data) => {
+    console.error(`[Download Error]: ${data}`);
+  });
 
   req.on('close', () => proc.kill());
 });
