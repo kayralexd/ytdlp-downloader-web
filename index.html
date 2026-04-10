@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VidAl — Video & Ses İndirici</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    /* ── Tema Değişkenleri ─────────────────────────────────────── */
+    :root {
+      --bg-base:      #0a0a0b;
+      --bg-surface:   #111114;
+      --bg-card:      #16161a;
+      --bg-input:     #1c1c21;
+      --border:       #2a2a32;
+      --border-glow:  #f59e0b55;
+      --accent:       #f59e0b;
+      --accent-dim:   #b45309;
+      --accent-glow:  #f59e0b22;
+      --text-primary: #f4f4f5;
+      --text-muted:   #71717a;
+      --text-subtle:  #3f3f46;
+      --success:      #10b981;
+      --danger:       #ef4444;
+      --radius:       12px;
+      --radius-lg:    18px;
+    }
+
+    /* ── Reset & Base ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-primary);
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 400;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Arka Plan Dokusu ──────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, #f59e0b0d 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 80% 80%, #7c3aed08 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Noise texture */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* ── Sayfa Düzeni ──────────────────────────────────────────── */
+    .page-wrapper {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 6rem;
+    }
+
+    /* ── Logo & Başlık ─────────────────────────────────────────── */
+    .header {
+      text-align: center;
+      margin-bottom: 3rem;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .logo-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .logo-icon {
+      width: 42px;
+      height: 42px;
+      background: var(--accent);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 30px var(--accent-glow), 0 0 60px #f59e0b11;
+    }
+
+    .logo-icon svg {
+      width: 22px;
+      height: 22px;
+      fill: #0a0a0b;
+    }
+
+    .logo-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .logo-text span { color: var(--accent); }
+
+    .tagline {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 300;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── URL Giriş Kartı ───────────────────────────────────────── */
+    .search-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.5s ease 0.1s both;
+      transition: border-color 0.3s;
+    }
+
+    .search-card:focus-within {
+      border-color: var(--border-glow);
+      box-shadow: 0 0 0 1px #f59e0b22;
+    }
+
+    .input-label {
+      display: block;
+      font-size: 0.75rem;
+      font-family: 'Space Mono', monospace;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.75rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.75rem;
+    }
+
+    .url-input {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.85rem 1.1rem;
+      color: var(--text-primary);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .url-input::placeholder { color: var(--text-subtle); }
+
+    .url-input:focus {
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    .btn-fetch {
+      background: var(--accent);
+      color: #0a0a0b;
+      border: none;
+      border-radius: var(--radius);
+      padding: 0.85rem 1.4rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-fetch:hover {
+      background: #fbbf24;
+      box-shadow: 0 4px 20px #f59e0b44;
+    }
+
+    .btn-fetch:active { transform: scale(0.97); }
+    .btn-fetch:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Paste butonu */
+    .paste-hint {
+      margin-top: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-paste {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.3rem 0.7rem;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-paste:hover { border-color: var(--accent-dim); color: var(--accent); }
+
+    .paste-label { font-size: 0.75rem; color: var(--text-subtle); }
+
+    /* ── Desteklenen Platformlar ───────────────────────────────── */
+    .platforms {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 2rem;
+      animation: fadeUp 0.5s ease 0.2s both;
+    }
+
+    .platform-tag {
+      background: var(--bg-surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 0.3rem 0.8rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'Space Mono', monospace;
+    }
+
+    /* ── Hata Mesajı ───────────────────────────────────────────── */
+    .error-box {
+      background: #7f1d1d22;
+      border: 1px solid #7f1d1d;
+      border-radius: var(--radius);
+      padding: 0.9rem 1.1rem;
+      color: #fca5a5;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      animation: shake 0.4s ease;
+      margin-bottom: 1.5rem;
+    }
+
+    .error-box svg { flex-shrink: 0; }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+
+    /* ── Video Bilgi Kartı ─────────────────────────────────────── */
+    .video-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    .video-info-section {
+      display: flex;
+      gap: 1.2rem;
+      padding: 1.4rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .thumbnail-wrapper {
+      flex-shrink: 0;
+      width: 160px;
+      height: 100px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--bg-input);
+      position: relative;
+    }
+
+    .thumbnail-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumbnail-no-img {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-subtle);
+    }
+
+    .duration-badge {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      background: #000000cc;
+      color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: 0.65rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+    }
+
+    .video-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .video-title {
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 0.5rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .video-details {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .detail-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: var(--bg-input);
+      border-radius: 6px;
+      padding: 0.2rem 0.6rem;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: 'Space Mono', monospace;
+    }
+
+    /* ── Format Seçimi ─────────────────────────────────────────── */
+    .format-section {
+      padding: 1.4rem;
+    }
+
+    .section-label {
+      font-size: 0.72rem;
+      font-family: 'Space Mono', monospace;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.9rem;
+    }
+
+    .format-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.6rem;
+      margin-bottom: 1.2rem;
+    }
+
+    @media (max-width: 480px) {
+      .format-grid { grid-template-columns: 1fr; }
+      .thumbnail-wrapper { width: 110px; height: 75px; }
+      .video-info-section { gap: 0.8rem; }
+    }
+
+    .format-option {
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      background: var(--bg-input);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.7rem 0.9rem;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+      position: relative;
+    }
+
+    .format-option:hover {
+      border-color: var(--accent-dim);
+      background: var(--bg-surface);
+    }
+
+    .format-option.selected {
+      border-color: var(--accent);
+      background: var(--accent-glow);
+      box-shadow: 0 0 0 1px var(--accent-glow);
+    }
+
+    .format-radio {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: border-color 0.2s;
+    }
+
+    .format-option.selected .format-radio {
+      border-color: var(--accent);
+    }
+
+    .format-radio-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      opacity: 0;
+      transform: scale(0);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .format-option.selected .format-radio-dot {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .format-info { flex: 1; min-width: 0; }
+
+    .format-label {
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      display: block;
+      line-height: 1.3;
+    }
+
+    .format-type-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-family: 'Space Mono', monospace;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      margin-top: 0.2rem;
+    }
+
+    .format-type-badge.audio {
+      background: #7c3aed22;
+      color: #a78bfa;
+      border: 1px solid #7c3aed44;
+    }
+
+    .format-type-badge.video {
+      background: #0284c722;
+      color: #7dd3fc;
+      border: 1px solid #0284c744;
+    }
+
+    /* ── İndir Butonu ──────────────────────────────────────────── */
+    .btn-download {
+      width: 100%;
+      background: var(--accent);
+      color: #0a0a0b;
+      border: none;
+      border-radius: var(--radius);
+      padding: 1rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-download:hover {
+      background: #fbbf24;
+      box-shadow: 0 6px 30px #f59e0b44;
+      transform: translateY(-1px);
+    }
+
+    .btn-download:active { transform: scale(0.98) translateY(0); }
+
+    .btn-download:disabled {
+      background: var(--bg-input);
+      color: var(--text-subtle);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* ── Yükleme Animasyonu ────────────────────────────────────── */
+    .loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: #0a0a0bcc;
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .loading-spinner {
+      width: 64px;
+      height: 64px;
+      position: relative;
+    }
+
+    .spinner-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid transparent;
+    }
+
+    .spinner-ring:nth-child(1) {
+      border-top-color: var(--accent);
+      animation: spin 1s linear infinite;
+    }
+
+    .spinner-ring:nth-child(2) {
+      inset: 8px;
+      border-right-color: #f59e0b88;
+      animation: spin 0.7s linear infinite reverse;
+    }
+
+    .spinner-ring:nth-child(3) {
+      inset: 16px;
+      border-bottom-color: #f59e0b44;
+      animation: spin 0.5s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-text {
+      text-align: center;
+    }
+
+    .loading-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 0.3rem;
+    }
+
+    .loading-sub {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: 'Space Mono', monospace;
+      animation: pulse 2s ease infinite;
+    }
+
+    .loading-progress-bar {
+      width: 240px;
+      height: 3px;
+      background: var(--border);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .loading-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+      border-radius: 100px;
+      width: 30%;
+      animation: progressSlide 1.8s ease infinite;
+    }
+
+    @keyframes progressSlide {
+      0% { width: 10%; margin-left: 0; }
+      50% { width: 50%; margin-left: 25%; }
+      100% { width: 10%; margin-left: 90%; }
+    }
+
+    .btn-cancel {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.5rem 1.2rem;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-cancel:hover { border-color: var(--danger); color: #fca5a5; }
+
+    /* ── Info Yükleniyor ───────────────────────────────────────── */
+    .skeleton-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 1.4rem;
+      animation: fadeUp 0.3s ease both;
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--bg-input) 25%, var(--bg-surface) 50%, var(--bg-input) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+    }
+
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── Genel Animasyonlar ────────────────────────────────────── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ── Footer ────────────────────────────────────────────────── */
+    .footer {
+      text-align: center;
+      margin-top: 3rem;
+      font-size: 0.72rem;
+      color: var(--text-subtle);
+      font-family: 'Space Mono', monospace;
+      line-height: 2;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ── Başarı Toast ───────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #064e3b;
+      border: 1px solid var(--success);
+      border-radius: var(--radius);
+      padding: 0.8rem 1.4rem;
+      color: #6ee7b7;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: transform 0.3s ease;
+      z-index: 200;
+      white-space: nowrap;
+    }
+
+    .toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+  <!-- ── Başlık ──────────────────────────────────────────────── -->
+  <header class="header">
+    <div class="logo-mark">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/>
+        </svg>
+      </div>
+      <span class="logo-text">Vid<span>Al</span></span>
+    </div>
+    <p class="tagline">YouTube, Instagram, Twitter ve 1000+ platformdan video & ses indir</p>
+  </header>
+
+  <!-- ── URL Giriş Kartı ──────────────────────────────────────── -->
+  <div class="search-card">
+    <label class="input-label">// Video URL'si gir</label>
+    <div class="input-row">
+      <input
+        id="urlInput"
+        class="url-input"
+        type="url"
+        placeholder="https://www.youtube.com/watch?v=..."
+        autocomplete="off"
+        spellcheck="false"
+      />
+      <button class="btn-fetch" id="fetchBtn" onclick="fetchInfo()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        Analiz Et
+      </button>
+    </div>
+    <div class="paste-hint">
+      <button class="btn-paste" onclick="pasteFromClipboard()">⌘ Yapıştır</button>
+      <span class="paste-label">veya URL'yi yukarıya yapıştır</span>
+    </div>
+  </div>
+
+  <!-- ── Desteklenen Platformlar ─────────────────────────────── -->
+  <div class="platforms">
+    <span class="platform-tag">YouTube</span>
+    <span class="platform-tag">Instagram</span>
+    <span class="platform-tag">Twitter / X</span>
+    <span class="platform-tag">TikTok</span>
+    <span class="platform-tag">Vimeo</span>
+    <span class="platform-tag">Facebook</span>
+    <span class="platform-tag">SoundCloud</span>
+    <span class="platform-tag">+1000 platform</span>
+  </div>
+
+  <!-- ── Hata Kutusu ─────────────────────────────────────────── -->
+  <div id="errorBox" class="error-box hidden">
+    <svg width="18" height="18" fill="none" stroke="#fca5a5" stroke-width="2" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="10"/><path d="M12 8v4m0 4h.01"/>
+    </svg>
+    <span id="errorMsg"></span>
+  </div>
+
+  <!-- ── Skeleton (Yükleniyor) ───────────────────────────────── -->
+  <div id="skeletonCard" class="skeleton-card hidden">
+    <div style="display:flex;gap:1rem;margin-bottom:1rem">
+      <div class="skeleton" style="width:160px;height:100px;flex-shrink:0"></div>
+      <div style="flex:1">
+        <div class="skeleton" style="height:16px;margin-bottom:8px"></div>
+        <div class="skeleton" style="height:16px;width:70%;margin-bottom:16px"></div>
+        <div style="display:flex;gap:6px">
+          <div class="skeleton" style="height:24px;width:70px;border-radius:100px"></div>
+          <div class="skeleton" style="height:24px;width:80px;border-radius:100px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="skeleton" style="height:14px;width:40%;margin-bottom:10px"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="skeleton" style="height:60px;border-radius:12px"></div>
+      <div class="skeleton" style="height:60px;border-radius:12px"></div>
+      <div class="skeleton" style="height:60px;border-radius:12px"></div>
+      <div class="skeleton" style="height:60px;border-radius:12px"></div>
+    </div>
+  </div>
+
+  <!-- ── Video Kartı ─────────────────────────────────────────── -->
+  <div id="videoCard" class="video-card hidden">
+    <div class="video-info-section">
+      <div class="thumbnail-wrapper">
+        <img id="thumbnail" src="" alt="Küçük Resim" onerror="this.parentElement.innerHTML='<div class=\'thumbnail-no-img\'><svg width=\'32\' height=\'32\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'1.5\' viewBox=\'0 0 24 24\'><rect x=\'2\' y=\'2\' width=\'20\' height=\'20\' rx=\'2\'/><path d=\'m10 8 6 4-6 4V8z\'/></svg></div>'"/>
+        <div class="duration-badge" id="durationBadge"></div>
+      </div>
+      <div class="video-meta">
+        <div class="video-title" id="videoTitle">—</div>
+        <div class="video-details">
+          <div class="detail-chip" id="uploaderChip">
+            <svg width="10" height="10" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
+            <span id="uploaderName">—</span>
+          </div>
+          <div class="detail-chip" id="platformChip">
+            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 1 0 20"/><path d="M2 12h20"/></svg>
+            <span id="platformName">—</span>
+          </div>
+          <div class="detail-chip" id="viewChip" style="display:none">
+            <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <span id="viewCount">—</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="format-section">
+      <div class="section-label">// Kalite Seç</div>
+      <div class="format-grid" id="formatGrid">
+        <!-- Dinamik olarak doldurulur -->
+      </div>
+      <button class="btn-download" id="downloadBtn" onclick="startDownload()" disabled>
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Format Seç
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Footer ──────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div>yt-dlp + FFmpeg ile desteklenmektedir</div>
+    <div>Sadece yasal ve telif hakkı serbest içerikler için kullanın.</div>
+  </footer>
+
+</div>
+
+<!-- ── Yükleme Overlay'i ─────────────────────────────────────── -->
+<div id="loadingOverlay" class="loading-overlay hidden">
+  <div class="loading-spinner">
+    <div class="spinner-ring"></div>
+    <div class="spinner-ring"></div>
+    <div class="spinner-ring"></div>
+  </div>
+  <div class="loading-text">
+    <div class="loading-title" id="loadingTitle">İndiriliyor...</div>
+    <div class="loading-sub" id="loadingSubtext">Lütfen bekleyin, hazırlanıyor</div>
+  </div>
+  <div class="loading-progress-bar">
+    <div class="loading-progress-fill"></div>
+  </div>
+  <button class="btn-cancel" onclick="cancelDownload()">İptal Et</button>
+</div>
+
+<!-- ── Toast ─────────────────────────────────────────────────── -->
+<div id="toast" class="toast">
+  <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+  <span id="toastMsg">İndirme başladı!</span>
+</div>
+
+<script>
+  // ── Durum Değişkenleri ───────────────────────────────────────
+  let currentFormats = [];
+  let selectedFormat = null;
+  let currentTitle = '';
+  let downloadController = null;
+  let abortDownload = false;
+
+  // ── Yardımcı: Süreyi Biçimlendir ────────────────────────────
+  function formatDuration(seconds) {
+    if (!seconds || seconds <= 0) return '';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+
+  // ── Yardımcı: İzlenme Sayısını Biçimlendir ──────────────────
+  function formatViews(n) {
+    if (!n) return null;
+    if (n >= 1e9) return (n / 1e9).toFixed(1) + 'B görüntülenme';
+    if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M görüntülenme';
+    if (n >= 1e3) return (n / 1e3).toFixed(0) + 'K görüntülenme';
+    return n + ' görüntülenme';
+  }
+
+  // ── Hata Göster ─────────────────────────────────────────────
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    document.getElementById('errorMsg').textContent = msg;
+    box.classList.remove('hidden');
+    // Animasyonu yeniden tetikle
+    box.style.animation = 'none';
+    void box.offsetWidth;
+    box.style.animation = 'shake 0.4s ease';
+  }
+
+  function hideError() {
+    document.getElementById('errorBox').classList.add('hidden');
+  }
+
+  // ── Toast Göster ─────────────────────────────────────────────
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3500);
+  }
+
+  // ── Yapıştır ─────────────────────────────────────────────────
+  async function pasteFromClipboard() {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        document.getElementById('urlInput').value = text.trim();
+        document.getElementById('urlInput').focus();
+      }
+    } catch {
+      document.getElementById('urlInput').focus();
+    }
+  }
+
+  // ── Enter tuşu ───────────────────────────────────────────────
+  document.getElementById('urlInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') fetchInfo();
+  });
+
+  // ── Video Bilgisi Getir ──────────────────────────────────────
+  async function fetchInfo() {
+    const url = document.getElementById('urlInput').value.trim();
+    if (!url) {
+      showError('Lütfen bir URL girin.');
+      return;
+    }
+
+    // Arayüzü sıfırla
+    hideError();
+    document.getElementById('videoCard').classList.add('hidden');
+    document.getElementById('skeletonCard').classList.remove('hidden');
+    document.getElementById('fetchBtn').disabled = true;
+
+    selectedFormat = null;
+    currentFormats = [];
+
+    try {
+      const res = await fetch('/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Bilinmeyen bir hata oluştu.');
+      }
+
+      currentTitle = data.title;
+      currentFormats = data.formats;
+
+      // Video bilgilerini doldur
+      document.getElementById('videoTitle').textContent = data.title;
+      document.getElementById('uploaderName').textContent = data.uploader;
+      document.getElementById('platformName').textContent = data.platform;
+
+      const dur = formatDuration(data.duration);
+      const badge = document.getElementById('durationBadge');
+      if (dur) { badge.textContent = dur; badge.style.display = 'block'; }
+      else { badge.style.display = 'none'; }
+
+      const views = formatViews(data.viewCount);
+      if (views) {
+        document.getElementById('viewCount').textContent = views;
+        document.getElementById('viewChip').style.display = 'flex';
+      } else {
+        document.getElementById('viewChip').style.display = 'none';
+      }
+
+      // Thumbnail
+      const img = document.getElementById('thumbnail');
+      if (data.thumbnail) {
+        img.src = data.thumbnail;
+        img.style.display = 'block';
+      } else {
+        img.style.display = 'none';
+      }
+
+      // Format listesini oluştur
+      renderFormats(data.formats);
+
+      document.getElementById('skeletonCard').classList.add('hidden');
+      document.getElementById('videoCard').classList.remove('hidden');
+
+    } catch (err) {
+      document.getElementById('skeletonCard').classList.add('hidden');
+      showError(err.message || 'Sunucuya bağlanılamadı. Lütfen tekrar deneyin.');
+    } finally {
+      document.getElementById('fetchBtn').disabled = false;
+    }
+  }
+
+  // ── Format Kartlarını Render Et ──────────────────────────────
+  function renderFormats(formats) {
+    const grid = document.getElementById('formatGrid');
+    grid.innerHTML = '';
+
+    formats.forEach((fmt, i) => {
+      const div = document.createElement('div');
+      div.className = 'format-option';
+      div.dataset.index = i;
+      div.onclick = () => selectFormat(i);
+
+      const badgeClass = fmt.type === 'audio' ? 'audio' : 'video';
+      const badgeText = fmt.type === 'audio' ? '🎵 SES' : '🎬 VİDEO';
+
+      div.innerHTML = `
+        <div class="format-radio">
+          <div class="format-radio-dot"></div>
+        </div>
+        <div class="format-info">
+          <span class="format-label">${fmt.label}</span>
+          <span class="format-type-badge ${badgeClass}">${badgeText}</span>
+        </div>
+      `;
+      grid.appendChild(div);
+    });
+  }
+
+  // ── Format Seç ───────────────────────────────────────────────
+  function selectFormat(index) {
+    selectedFormat = currentFormats[index];
+
+    document.querySelectorAll('.format-option').forEach((el, i) => {
+      el.classList.toggle('selected', i === index);
+    });
+
+    const btn = document.getElementById('downloadBtn');
+    btn.disabled = false;
+    btn.innerHTML = `
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      ${selectedFormat.label} — İndir
+    `;
+  }
+
+  // ── İndirmeyi Başlat ─────────────────────────────────────────
+  async function startDownload() {
+    if (!selectedFormat) return;
+
+    const url = document.getElementById('urlInput').value.trim();
+    abortDownload = false;
+
+    // Loading göster
+    document.getElementById('loadingTitle').textContent = 'İndirme Hazırlanıyor...';
+    document.getElementById('loadingSubtext').textContent = selectedFormat.label + ' işleniyor';
+    document.getElementById('loadingOverlay').classList.remove('hidden');
+
+    // Yükleniyor metnini döngülü değiştir
+    const messages = [
+      'Sunucuya bağlanılıyor...',
+      'Video akışı alınıyor...',
+      'Ses ve görüntü birleştiriliyor...',
+      'Dosya hazırlanıyor...',
+      'İndirme başlatılıyor...'
+    ];
+    let msgIdx = 0;
+    const msgInterval = setInterval(() => {
+      if (abortDownload) { clearInterval(msgInterval); return; }
+      document.getElementById('loadingSubtext').textContent = messages[msgIdx % messages.length];
+      msgIdx++;
+    }, 2000);
+
+    try {
+      // Dosya adını temizle
+      const safeTitle = currentTitle.substring(0, 80) || 'video';
+
+      const params = new URLSearchParams({
+        url,
+        format: selectedFormat.id,
+        filename: safeTitle
+      });
+
+      // <a> tağı ile indirme tetikle
+      const link = document.createElement('a');
+      link.href = '/download?' + params.toString();
+      link.download = safeTitle + '.' + selectedFormat.ext;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+
+      // Kısa bir gecikme sonra loading'i kapat
+      await new Promise(r => setTimeout(r, 3000));
+
+      document.getElementById('loadingTitle').textContent = '✓ İndirme Başladı';
+      document.getElementById('loadingSubtext').textContent = 'Tarayıcı indirme klasörünü kontrol edin';
+
+      await new Promise(r => setTimeout(r, 1500));
+
+      clearInterval(msgInterval);
+      document.getElementById('loadingOverlay').classList.add('hidden');
+      document.body.removeChild(link);
+      showToast('İndirme başarıyla başlatıldı!');
+
+    } catch (err) {
+      clearInterval(msgInterval);
+      document.getElementById('loadingOverlay').classList.add('hidden');
+      showError('İndirme başlatılırken hata oluştu: ' + err.message);
+    }
+  }
+
+  // ── İptal ────────────────────────────────────────────────────
+  function cancelDownload() {
+    abortDownload = true;
+    document.getElementById('loadingOverlay').classList.add('hidden');
+  }
+</script>
+</body>
+</html>
