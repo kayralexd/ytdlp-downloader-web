@@ -1,7 +1,7 @@
-# ─── Aşama 1: Bağımlılıkları yükle ─────────────────────────────────────────
-FROM node:20-slim AS base
+# ─── Aşama 1: Temel İmaj ve Sistem Bağımlılıkları ─────────────────────────
+FROM node:20-slim
 
-# Sistem bağımlılıklarını yükle (yt-dlp ve ffmpeg için gerekli)
+# Sistem bağımlılıklarını tek katmanda yükle
 RUN apt-get update && apt-get install -y \
     python3 \
     python3-pip \
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
-# yt-dlp'yi en güncel sürümüyle doğrudan indir
+# yt-dlp'yi en güncel sürümüyle doğrudan indir ve yetki ver
 RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
     -o /usr/local/bin/yt-dlp \
     && chmod a+rx /usr/local/bin/yt-dlp
@@ -19,18 +19,22 @@ RUN curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
 # ─── Aşama 2: Uygulama Kurulumu ───────────────────────────────────────────
 WORKDIR /app
 
-# npm ci hatasını önlemek için klasik install kullanıyoruz
+# Önce sadece package dosyalarını kopyala (Cache avantajı için)
 COPY package*.json ./
-RUN npm install --only=production
 
-# Tüm dosyaları kopyala
+# Bağımlılıkları yükle
+RUN npm install --production
+
+# Uygulama dosyalarını kopyala
 COPY . .
 
-# Render portu
+# Render veya diğer servisler için Port tanımla
+ENV PORT=3000
 EXPOSE 3000
 
-# Sağlık kontrolü (Sistemin ayakta olduğunu doğrular)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# Sağlık kontrolü
+HEALTHCHECK --interval=1m --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:3000/health || exit 1
 
+# Uygulamayı başlat
 CMD ["node", "server.js"]
